@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Veg Tracker">
+<meta name="theme-color" content="#f5f2ed">
+<link rel="manifest" id="pwa-manifest">
+<title>Veg Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;1,9..144,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --veg:#4a7c3f;--veg-light:#e8f3e5;--veg-mid:#8ab87f;
+    --meat:#b85c38;--meat-light:#f7ece6;--meat-mid:#d9917a;
+    --neutral:#9e9a94;--bg:#f5f2ed;--surface:#ffffff;--surface2:#f0ece6;
+    --text:#1e1c19;--text2:#6b6760;--text3:#a09d98;
+    --border:rgba(30,28,25,0.10);--border2:rgba(30,28,25,0.06);
+    --radius:16px;--radius-sm:10px;
+    --safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;min-height:100dvh;overflow:hidden;display:flex;flex-direction:column;max-width:430px;margin:0 auto;}
+  .app{display:flex;flex-direction:column;height:100vh;height:100dvh;}
+  .topbar{padding:calc(var(--safe-top) + 14px) 20px 14px;display:flex;align-items:center;justify-content:space-between;background:var(--bg);flex-shrink:0;}
+  .topbar-title{font-family:'Fraunces',serif;font-size:22px;font-weight:500;letter-spacing:-0.3px;}
+  .user-chip{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:24px;padding:5px 12px 5px 6px;cursor:pointer;transition:background 0.15s;}
+  .user-chip:active{background:var(--surface2);}
+  .user-avatar{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;}
+  .user-chip-name{font-size:13px;font-weight:500;}
+  .page{display:none;flex:1;overflow-y:auto;overflow-x:hidden;padding-bottom:calc(var(--safe-bottom) + 80px);}
+  .page.active{display:block;}
+  .log-date{text-align:center;padding:10px 20px 24px;}
+  .log-date-day{font-size:13px;color:var(--text2);margin-bottom:2px;}
+  .log-date-full{font-family:'Fraunces',serif;font-size:28px;font-weight:300;letter-spacing:-0.5px;}
+  .log-today-status{margin:0 20px 20px;padding:12px 16px;background:var(--surface);border-radius:var(--radius-sm);border:1px solid var(--border);display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text2);}
+  .status-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+  .log-buttons{padding:0 20px;display:flex;flex-direction:column;gap:12px;}
+  .log-btn{border-radius:var(--radius);padding:32px 24px;display:flex;align-items:center;gap:20px;cursor:pointer;border:1.5px solid transparent;transition:transform 0.12s,opacity 0.12s;position:relative;overflow:hidden;}
+  .log-btn:active{transform:scale(0.97);opacity:0.9;}
+  .log-btn.veg{background:var(--veg-light);border-color:rgba(74,124,63,0.2);}
+  .log-btn.meat{background:var(--meat-light);border-color:rgba(184,92,56,0.2);}
+  .log-btn.selected-veg{background:var(--veg);border-color:var(--veg);}
+  .log-btn.selected-meat{background:var(--meat);border-color:var(--meat);}
+  .log-btn-icon{font-size:44px;line-height:1;flex-shrink:0;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.1));}
+  .log-btn-text{flex:1;}
+  .log-btn-label{font-family:'Fraunces',serif;font-size:26px;font-weight:500;letter-spacing:-0.3px;line-height:1.1;}
+  .log-btn-sub{font-size:13px;margin-top:3px;opacity:0.7;}
+  .log-btn.veg .log-btn-label{color:var(--veg);}
+  .log-btn.meat .log-btn-label{color:var(--meat);}
+  .log-btn.selected-veg .log-btn-label,.log-btn.selected-veg .log-btn-sub{color:white;opacity:1;}
+  .log-btn.selected-meat .log-btn-label,.log-btn.selected-meat .log-btn-sub{color:white;opacity:1;}
+  .log-btn.veg .log-btn-sub{color:var(--veg);}
+  .log-btn.meat .log-btn-sub{color:var(--meat);}
+  .check-badge{width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,0.3);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+  .sync-status{margin:16px 20px 0;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text3);}
+  .sync-dot{width:6px;height:6px;border-radius:50%;background:var(--text3);}
+  .sync-dot.ok{background:var(--veg);}
+  .sync-dot.err{background:var(--meat);}
+  .recent-section{padding:24px 20px 0;}
+  .recent-title{font-size:12px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;}
+  .recent-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border2);}
+  .recent-row:last-child{border-bottom:none;}
+  .recent-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+  .recent-date{font-size:13px;color:var(--text2);flex:1;}
+  .recent-type{font-size:13px;font-weight:500;}
+  .dash-header{padding:0 20px 16px;display:flex;align-items:center;justify-content:space-between;}
+  .year-nav{display:flex;align-items:center;gap:12px;}
+  .year-arrow{width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--text);transition:background 0.12s;}
+  .year-arrow:active{background:var(--surface2);}
+  .year-arrow.off{opacity:.25;pointer-events:none;}
+  .year-num{font-family:'Fraunces',serif;font-size:22px;font-weight:500;letter-spacing:-0.3px;}
+  .cur-badge{font-size:11px;background:var(--veg-light);color:var(--veg);border-radius:20px;padding:2px 8px;font-weight:500;}
+  .dash-pie-row{margin:0 20px 16px;background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);padding:16px;display:flex;align-items:center;gap:16px;}
+  .pie-canvas-wrap{position:relative;width:100px;height:100px;flex-shrink:0;}
+  .pie-center-text{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;}
+  .pie-center-pct{font-family:'Fraunces',serif;font-size:20px;font-weight:500;color:var(--veg);}
+  .pie-center-lbl{font-size:10px;color:var(--text3);}
+  .pie-legend{flex:1;}
+  .pie-legend-item{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+  .pie-legend-item:last-child{margin-bottom:0;}
+  .pie-legend-sq{width:12px;height:12px;border-radius:3px;flex-shrink:0;}
+  .pie-legend-label{font-size:13px;color:var(--text2);}
+  .pie-legend-val{font-size:16px;font-weight:500;margin-left:auto;}
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 20px 16px;}
+  .sc{background:var(--surface);border-radius:var(--radius-sm);border:1px solid var(--border);padding:12px 14px;}
+  .sv{font-family:'Fraunces',serif;font-size:24px;font-weight:500;letter-spacing:-0.3px;}
+  .sl{font-size:11px;color:var(--text3);margin-top:2px;}
+  .cal-section{padding:0 20px;}
+  .cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .cal-lbl{font-size:12px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;}
+  .view-tabs{display:flex;gap:4px;}
+  .vt{font-size:12px;padding:4px 10px;border-radius:20px;border:1px solid var(--border);cursor:pointer;background:transparent;color:var(--text2);transition:background 0.12s;}
+  .vt.active{background:var(--surface);color:var(--text);font-weight:500;}
+  .cal-grid{display:grid;gap:3px;}
+  .cal-cell{border-radius:3px;aspect-ratio:1;}
+  .month-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+  .month-cell{border-radius:var(--radius-sm);padding:10px 12px;display:flex;justify-content:space-between;align-items:center;}
+  .month-name{font-size:13px;font-weight:500;color:#1e1c19;}
+  .month-pct{font-size:11px;opacity:.7;color:#1e1c19;}
+  .streak-card{margin:14px 20px 0;background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);padding:14px 16px;display:flex;align-items:center;gap:12px;}
+  .streak-icon{font-size:22px;}
+  .streak-val{font-family:'Fraunces',serif;font-size:22px;font-weight:500;color:var(--veg);}
+  .streak-sub{font-size:12px;color:var(--text3);margin-top:1px;}
+  .settings-section{padding:0 20px 4px;}
+  .settings-section-title{font-size:11px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;padding-top:20px;}
+  .settings-card{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;margin-bottom:4px;}
+  .settings-row{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--border2);cursor:pointer;}
+  .settings-row:last-child{border-bottom:none;}
+  .settings-row-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
+  .settings-row-text{flex:1;min-width:0;}
+  .settings-row-title{font-size:14px;}
+  .settings-row-sub{font-size:12px;color:var(--text3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .settings-chevron{color:var(--text3);font-size:16px;}
+  .pill{font-size:11px;padding:3px 9px;border-radius:20px;font-weight:500;flex-shrink:0;}
+  .pill-green{background:var(--veg-light);color:var(--veg);}
+  .user-row-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;flex-shrink:0;}
+  .remove-btn{width:24px;height:24px;border-radius:50%;background:var(--surface2);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;color:var(--text2);flex-shrink:0;}
+  .add-user-form{display:flex;gap:8px;padding:12px 16px;background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);margin-bottom:4px;}
+  .add-user-form input{flex:1;font-size:14px;font-family:'DM Sans',sans-serif;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);outline:none;}
+  .add-user-form input:focus{border-color:var(--veg-mid);}
+  .add-user-form button{padding:8px 14px;border-radius:8px;background:var(--veg-light);border:1px solid rgba(74,124,63,0.25);color:var(--veg);font-size:13px;font-weight:500;font-family:'DM Sans',sans-serif;cursor:pointer;}
+  .sheet-config{padding:12px 16px;background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);margin-bottom:4px;}
+  .sheet-config label{font-size:12px;color:var(--text3);display:block;margin-bottom:6px;}
+  .sheet-config input{width:100%;font-size:13px;font-family:'DM Sans',sans-serif;padding:9px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);outline:none;margin-bottom:8px;}
+  .sheet-config input:focus{border-color:var(--veg-mid);}
+  .sheet-config-btns{display:flex;gap:8px;}
+  .sheet-config-btns button{flex:1;padding:9px;border-radius:8px;font-size:13px;font-weight:500;font-family:'DM Sans',sans-serif;cursor:pointer;border:1px solid var(--border);}
+  .btn-save{background:var(--veg-light);color:var(--veg);border-color:rgba(74,124,63,0.25) !important;}
+  .btn-neutral{background:var(--surface2);color:var(--text2);}
+  .sheet-hint{font-size:11px;color:var(--text3);margin-top:8px;line-height:1.5;}
+  .tabbar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:rgba(245,242,237,0.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid var(--border);display:flex;padding-bottom:var(--safe-bottom);z-index:100;}
+  .tb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 0;cursor:pointer;gap:3px;color:var(--text3);transition:color 0.15s;}
+  .tb.active{color:var(--veg);}
+  .tb-icon{font-size:20px;}
+  .tb-label{font-size:10px;font-weight:500;letter-spacing:.02em;}
+  .modal-overlay{display:none;position:fixed;inset:0;z-index:200;background:rgba(30,28,25,0.45);align-items:flex-end;justify-content:center;}
+  .modal-overlay.open{display:flex;}
+  .modal{background:var(--surface);border-radius:20px 20px 0 0;width:100%;max-width:430px;padding:20px 20px calc(var(--safe-bottom) + 24px);max-height:70vh;overflow-y:auto;}
+  .modal-title{font-family:'Fraunces',serif;font-size:20px;font-weight:500;margin-bottom:16px;}
+  .modal-user-item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border2);cursor:pointer;}
+  .modal-user-item:last-child{border-bottom:none;}
+  .modal-user-name{flex:1;font-size:15px;}
+  .modal-check{color:var(--veg);font-size:18px;}
+  .toast{position:fixed;bottom:calc(var(--safe-bottom) + 72px);left:50%;transform:translateX(-50%) translateY(20px);background:var(--text);color:white;padding:10px 18px;border-radius:24px;font-size:13px;font-weight:500;opacity:0;pointer-events:none;transition:opacity 0.25s,transform 0.25s;white-space:nowrap;z-index:300;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  .birthday-overlay{display:none;position:fixed;inset:0;z-index:500;align-items:center;justify-content:center;background:rgba(30,28,25,0.6);}
+  .birthday-overlay.open{display:flex;}
+  .birthday-card{background:var(--surface);border-radius:24px;padding:32px 28px;max-width:300px;text-align:center;position:relative;}
+  .birthday-title{font-family:'Fraunces',serif;font-size:26px;font-weight:500;line-height:1.3;margin-bottom:16px;color:var(--text);}
+  .birthday-msg{font-size:15px;color:var(--text2);line-height:1.7;margin-bottom:24px;}
+  .birthday-btn{width:100%;padding:14px;border-radius:12px;background:var(--veg);color:white;border:none;font-size:15px;font-weight:500;font-family:'DM Sans',sans-serif;cursor:pointer;}
+  #confetti-canvas{position:fixed;inset:0;pointer-events:none;z-index:499;}
+  .setup-screen{display:none;position:fixed;inset:0;z-index:400;background:var(--bg);flex-direction:column;align-items:center;justify-content:center;padding:40px 32px;text-align:center;}
+  .setup-screen.active{display:flex;}
+  .setup-logo{font-size:56px;margin-bottom:20px;}
+  .setup-title{font-family:'Fraunces',serif;font-size:32px;font-weight:300;margin-bottom:8px;letter-spacing:-0.5px;}
+  .setup-sub{font-size:15px;color:var(--text2);margin-bottom:36px;line-height:1.6;}
+  .setup-label{font-size:12px;color:var(--text3);text-align:left;width:100%;margin-bottom:6px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;}
+  .setup-input{width:100%;font-size:15px;font-family:'DM Sans',sans-serif;padding:14px 16px;border-radius:var(--radius-sm);border:1.5px solid var(--border);background:var(--surface);color:var(--text);outline:none;margin-bottom:20px;}
+  .setup-input:focus{border-color:var(--veg);}
+  .setup-btn{width:100%;padding:16px;border-radius:var(--radius-sm);background:var(--veg);color:white;border:none;font-size:16px;font-weight:500;font-family:'DM Sans',sans-serif;cursor:pointer;margin-bottom:12px;}
+  .setup-hint{font-size:12px;color:var(--text3);line-height:1.6;}
+  .setup-hint a{color:var(--veg);}
+</style>
+</head>
+<body>
+
+<!-- SETUP SCREEN -->
+<div class="setup-screen active" id="setup-screen">
+  <div class="setup-logo">&#x1F33F;</div>
+  <div class="setup-title">Veg Tracker</div>
+  <div class="setup-sub">Track your plant-based days as a family.</div>
+  <div class="setup-label">Your name</div>
+  <input class="setup-input" id="setup-name-input" placeholder="e.g. Alice" />
+  <div class="setup-label">Apps Script URL</div>
+  <input class="setup-input" id="setup-script-input" placeholder="https://script.google.com/macros/s/&#x2026;/exec" />
+  <button class="setup-btn" onclick="completeSetup()">Get started</button>
+  <div class="setup-hint">Need help? See the <a href="#" onclick="showSetupGuide()">setup guide</a>.</div>
+</div>
+
+<!-- MAIN APP -->
+<div class="app" id="main-app" style="display:none;">
+  <div class="topbar">
+    <div class="topbar-title">&#x1F33F; Veg Tracker</div>
+    <div class="user-chip" onclick="openUserModal()">
+      <div class="user-avatar" id="topbar-avatar"></div>
+      <span class="user-chip-name" id="topbar-name"></span>
+      <span style="font-size:10px;color:var(--text3);">&#x25BE;</span>
+    </div>
+  </div>
+
+  <!-- LOG PAGE -->
+  <div class="page active" id="page-log">
+    <div class="log-date">
+      <div class="log-date-day" id="log-day-name"></div>
+      <div class="log-date-full" id="log-date-full"></div>
+    </div>
+    <div class="log-today-status" id="log-status-bar">
+      <div class="status-dot" id="log-status-dot" style="background:var(--text3);"></div>
+      <span id="log-status-text">Loading&#x2026;</span>
+    </div>
+    <div class="log-buttons">
+      <div class="log-btn veg" id="btn-veg" onclick="logDay('veg')">
+        <div class="log-btn-icon">&#x1F966;</div>
+        <div class="log-btn-text">
+          <div class="log-btn-label">Veg day</div>
+          <div class="log-btn-sub">Plant-based today</div>
+        </div>
+        <div class="check-badge" id="check-veg" style="display:none;">&#x2713;</div>
+      </div>
+      <div class="log-btn meat" id="btn-meat" onclick="logDay('meat')">
+        <div class="log-btn-icon">&#x1F969;</div>
+        <div class="log-btn-text">
+          <div class="log-btn-label">Meat day</div>
+          <div class="log-btn-sub">Meat on the menu</div>
+        </div>
+        <div class="check-badge" id="check-meat" style="display:none;">&#x2713;</div>
+      </div>
+    </div>
+    <div class="sync-status" id="sync-status">
+      <div class="sync-dot" id="sync-dot"></div>
+      <span id="sync-text">Not configured</span>
+    </div>
+    <div class="recent-section">
+      <div class="recent-title">Recent</div>
+      <div id="recent-list"></div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD PAGE -->
+  <div class="page" id="page-dash">
+    <div class="dash-header">
+      <div class="year-nav">
+        <div class="year-arrow off" id="prev-yr" onclick="changeYear(-1)">&#x2039;</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="year-num" id="yr-num">2025</span>
+          <span class="cur-badge" id="yr-badge">current</span>
+        </div>
+        <div class="year-arrow" id="next-yr" onclick="changeYear(1)">&#x203A;</div>
+      </div>
+      <div style="font-size:13px;color:var(--text3);" id="dash-user-label"></div>
+    </div>
+    <div class="dash-pie-row">
+      <div class="pie-canvas-wrap">
+        <canvas id="pie-canvas" role="img" aria-label="Pie chart of veg vs meat days"></canvas>
+        <div class="pie-center-text">
+          <div class="pie-center-pct" id="pie-center-pct">&#x2013;</div>
+          <div class="pie-center-lbl">veg</div>
+        </div>
+      </div>
+      <div class="pie-legend">
+        <div class="pie-legend-item">
+          <div class="pie-legend-sq" style="background:#8ab87f;"></div>
+          <div class="pie-legend-label">Veg days</div>
+          <div class="pie-legend-val" id="pie-veg-val" style="color:var(--veg);">&#x2013;</div>
+        </div>
+        <div class="pie-legend-item">
+          <div class="pie-legend-sq" style="background:#d9917a;"></div>
+          <div class="pie-legend-label">Meat days</div>
+          <div class="pie-legend-val" id="pie-meat-val" style="color:var(--meat);">&#x2013;</div>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-top:8px;" id="pie-total-lbl"></div>
+      </div>
+    </div>
+    <div class="stat-grid" id="stat-grid"></div>
+    <div class="cal-section">
+      <div class="cal-header">
+        <div class="cal-lbl" id="cal-lbl">Day by day</div>
+        <div class="view-tabs">
+          <div class="vt active" onclick="setView('day',this)">Days</div>
+          <div class="vt" onclick="setView('week',this)">Weeks</div>
+          <div class="vt" onclick="setView('month',this)">Months</div>
+        </div>
+      </div>
+      <div id="cal-container"></div>
+    </div>
+    <div class="streak-card" id="streak-card"></div>
+    <div style="height:8px;"></div>
+  </div>
+
+  <!-- SETTINGS PAGE -->
+  <div class="page" id="page-settings">
+    <div class="settings-section">
+      <div class="settings-section-title">Active user</div>
+      <div class="settings-card" id="active-user-card"></div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-section-title">Users</div>
+      <div class="settings-card" id="users-list-card"></div>
+      <div style="height:8px;"></div>
+      <div class="add-user-form">
+        <input id="new-user-input" placeholder="Add new user&#x2026;" maxlength="24" />
+        <button onclick="addUser()">Add</button>
+      </div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-section-title">Notifications</div>
+      <div class="settings-card">
+        <div class="settings-row" style="cursor:default;">
+          <div class="settings-row-icon" style="background:#faeeda;">&#x1F514;</div>
+          <div class="settings-row-text">
+            <div class="settings-row-title">Daily reminder</div>
+            <div class="settings-row-sub">If nothing logged by chosen time</div>
+          </div>
+        </div>
+        <div class="settings-row" style="cursor:default;">
+          <div class="settings-row-icon" style="background:var(--surface2);">&#x1F550;</div>
+          <div class="settings-row-text"><div class="settings-row-title">Reminder time</div></div>
+          <input type="time" id="notif-time-input" value="20:00"
+            style="border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface2);color:var(--text);outline:none;"
+            onchange="saveNotifTime(this.value)" />
+        </div>
+        <div class="settings-row" onclick="requestNotifPermission()">
+          <div class="settings-row-icon" style="background:var(--veg-light);">&#x2713;</div>
+          <div class="settings-row-text">
+            <div class="settings-row-title">Enable notifications</div>
+            <div class="settings-row-sub" id="notif-status">Tap to enable</div>
+          </div>
+          <div class="settings-chevron">&#x203A;</div>
+        </div>
+      </div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-section-title">Connection</div>
+      <div class="sheet-config">
+        <label>Apps Script URL</label>
+        <input id="script-url-input" placeholder="https://script.google.com/macros/s/&#x2026;/exec" />
+        <div class="sheet-config-btns">
+          <button class="btn-save" onclick="saveScriptConfig()">Save &amp; test</button>
+          <button class="btn-neutral" onclick="testConnection()">Test</button>
+        </div>
+        <div class="sheet-hint" id="sheet-hint"></div>
+      </div>
+      <div class="settings-card">
+        <div class="settings-row" onclick="openSheet()">
+          <div class="settings-row-icon" style="background:var(--veg-light);">&#x1F4CA;</div>
+          <div class="settings-row-text">
+            <div class="settings-row-title">Open Google Sheet</div>
+            <div class="settings-row-sub" id="sheet-url-preview">Not configured</div>
+          </div>
+          <div class="settings-chevron">&#x203A;</div>
+        </div>
+      </div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-section-title">About</div>
+      <div class="settings-card">
+        <div class="settings-row" style="cursor:default;">
+          <div class="settings-row-icon" style="background:var(--surface2);">&#x1F33F;</div>
+          <div class="settings-row-text"><div class="settings-row-title">Veg Tracker</div></div>
+          <div style="font-size:12px;color:var(--text3);">v1.1</div>
+        </div>
+        <div class="settings-row" onclick="showSetupGuide()">
+          <div class="settings-row-icon" style="background:var(--surface2);">&#x1F4D6;</div>
+          <div class="settings-row-text"><div class="settings-row-title">Setup guide</div></div>
+          <div class="settings-chevron">&#x203A;</div>
+        </div>
+      </div>
+    </div>
+    <div style="height:8px;"></div>
+  </div>
+
+  <!-- TAB BAR -->
+  <div class="tabbar">
+    <div class="tb active" id="tb-log" onclick="switchPage('log')">
+      <div class="tb-icon">&#x1F4DD;</div>
+      <div class="tb-label">Log</div>
+    </div>
+    <div class="tb" id="tb-dash" onclick="switchPage('dash')">
+      <div class="tb-icon">&#x1F4CA;</div>
+      <div class="tb-label">Dashboard</div>
+    </div>
+    <div class="tb" id="tb-settings" onclick="switchPage('settings')">
+      <div class="tb-icon">&#x2699;&#xFE0F;</div>
+      <div class="tb-label">Settings</div>
+    </div>
+  </div>
+</div>
+
+<!-- USER SWITCHER MODAL -->
+<div class="modal-overlay" id="user-modal" onclick="closeUserModal(event)">
+  <div class="modal">
+    <div class="modal-title">Switch user</div>
+    <div id="modal-user-list"></div>
+  </div>
+</div>
+
+<!-- DAY EDIT MODAL -->
+<div class="modal-overlay" id="day-edit-modal" onclick="closeDayEditModal(event)">
+  <div class="modal">
+    <div class="modal-title" id="day-edit-title">Edit day</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:8px;">
+      <div onclick="confirmDayEdit('veg')" style="background:var(--veg-light);border:1.5px solid rgba(74,124,63,0.2);border-radius:14px;padding:18px 20px;display:flex;align-items:center;gap:16px;cursor:pointer;">
+        <span style="font-size:32px;">&#x1F966;</span>
+        <div>
+          <div style="font-family:'Fraunces',serif;font-size:20px;font-weight:500;color:var(--veg);">Veg day</div>
+          <div style="font-size:12px;color:var(--veg);opacity:.8;margin-top:2px;">Plant-based</div>
+        </div>
+      </div>
+      <div onclick="confirmDayEdit('meat')" style="background:var(--meat-light);border:1.5px solid rgba(184,92,56,0.2);border-radius:14px;padding:18px 20px;display:flex;align-items:center;gap:16px;cursor:pointer;">
+        <span style="font-size:32px;">&#x1F969;</span>
+        <div>
+          <div style="font-family:'Fraunces',serif;font-size:20px;font-weight:500;color:var(--meat);">Meat day</div>
+          <div style="font-size:12px;color:var(--meat);opacity:.8;margin-top:2px;">Meat on the menu</div>
+        </div>
+      </div>
+      <div onclick="document.getElementById('day-edit-modal').classList.remove('open')" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;cursor:pointer;font-size:14px;color:var(--text2);">Cancel</div>
+    </div>
+  </div>
+</div>
+
+<!-- SETUP GUIDE MODAL -->
+<div class="modal-overlay" id="guide-modal" onclick="closeGuideModal(event)">
+  <div class="modal" style="max-height:80vh;">
+    <div class="modal-title">Setup guide</div>
+    <div style="font-size:14px;line-height:1.8;color:var(--text2);">
+      <p style="margin-bottom:12px;"><strong style="color:var(--text);">Step 1 &#x2014; Create a Google Sheet</strong><br>Go to sheets.google.com, create a new sheet, rename tabs to each person's name.</p>
+      <p style="margin-bottom:12px;"><strong style="color:var(--text);">Step 2 &#x2014; Apps Script</strong><br>In the sheet: Extensions &#x2192; Apps Script. Paste the provided code. Deploy as web app, execute as Me, access Anyone.</p>
+      <p style="margin-bottom:12px;"><strong style="color:var(--text);">Step 3 &#x2014; Notifications</strong><br>Host this file on GitHub Pages (free) to enable push notifications. Local files can't receive them.</p>
+      <p><strong style="color:var(--text);">Sheet format</strong><br>Column A = date (YYYY-MM-DD), Column B = veg or meat.</p>
+    </div>
+    <button onclick="document.getElementById('guide-modal').classList.remove('open')" style="width:100%;margin-top:20px;padding:14px;border-radius:var(--radius-sm);background:var(--veg);color:white;border:none;font-size:15px;font-weight:500;font-family:'DM Sans',sans-serif;cursor:pointer;">Got it</button>
+  </div>
+</div>
+
+<!-- BIRTHDAY SURPRISE -->
+<canvas id="confetti-canvas"></canvas>
+<div class="birthday-overlay" id="birthday-overlay">
+  <div class="birthday-card">
+    <div style="font-size:52px;margin-bottom:12px;">&#x1F370;</div>
+    <div class="birthday-title">Happy Birthday!</div>
+    <div class="birthday-msg">I love you very much Goose,<br>love Puffin. &#x1F48B;</div>
+    <button class="birthday-btn" onclick="closeBirthday()">&#x1F970; Thank you!</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── SERVICE WORKER (PWA + notifications) ──
+const SW_SRC = `
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', e => e.waitUntil(clients.claim()));
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil(clients.matchAll({type:'window'}).then(cs => {
+    if (cs.length) cs[0].focus(); else clients.openWindow('./');
+  }));
+});
+`;
+if ('serviceWorker' in navigator) {
+  const blob = new Blob([SW_SRC], {type:'application/javascript'});
+  navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(()=>{});
+}
+
+// ── PWA MANIFEST ──
+(function() {
+  const m = {name:'Veg Tracker',short_name:'Veg Tracker',start_url:'.',display:'standalone',
+    background_color:'#f5f2ed',theme_color:'#f5f2ed',
+    icons:[{src:"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#x1F33F;</text></svg>",sizes:'any',type:'image/svg+xml'}]};
+  const blob = new Blob([JSON.stringify(m)],{type:'application/manifest+json'});
+  document.getElementById('pwa-manifest').href = URL.createObjectURL(blob);
+})();
+
+// ── STATE ──
+let state = {
+  scriptUrl: 'https://script.google.com/macros/s/AKfycbxQVU0n7mcv4hTXICUG-nRXreUWuSbB4wh-TIwo-3BOaB_6efwKipVEzSdqenGguRZybA/exec',
+  users: [], activeUser: 0, notifTime: '20:00', notifEnabled: false,
+};
+const COLORS = [
+  {bg:'#e8f3e5',text:'#2d5e24'},{bg:'#e6f1fb',text:'#0c447c'},
+  {bg:'#faece7',text:'#712b13'},{bg:'#eeedfe',text:'#3c3489'},
+  {bg:'#faeeda',text:'#633806'},{bg:'#fbeaf0',text:'#72243e'},
+];
+const MN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MF = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+let dashYear = new Date().getFullYear(), dashView = 'day';
+let pieChartInst = null, dashData = null, isWriting = false, editingDate = null, notifTimer = null;
+
+function saveState() { localStorage.setItem('vt2', JSON.stringify(state)); }
+function loadState() { try { const s=localStorage.getItem('vt2'); if(s) state={...state,...JSON.parse(s)}; } catch(e){} }
+
+loadState();
+if (state.scriptUrl && state.users.length) showApp();
+
+function showApp() {
+  document.getElementById('setup-screen').classList.remove('active');
+  document.getElementById('main-app').style.display = 'flex';
+  renderTopbar(); renderLogPage(); renderSettingsInputs(); loadDashboard(); scheduleNotification();
+  checkBirthday();
+}
+
+function completeSetup() {
+  const url = document.getElementById('setup-script-input').value.trim();
+  const name = document.getElementById('setup-name-input').value.trim();
+  if (!url || !name) { showToast('Please fill in all fields'); return; }
+  state.scriptUrl = url;
+  if (!state.users.length) state.users = [{name, color:0}];
+  state.activeUser = 0;
+  saveState(); showApp();
+}
+
+function renderTopbar() {
+  if (!state.users.length) return;
+  const u = state.users[state.activeUser]||state.users[0];
+  const c = COLORS[u.color%COLORS.length];
+  const av = document.getElementById('topbar-avatar');
+  av.textContent = u.name.slice(0,2).toUpperCase();
+  av.style.background = c.bg; av.style.color = c.text;
+  document.getElementById('topbar-name').textContent = u.name;
+}
+
+function switchPage(p) {
+  ['log','dash','settings'].forEach(n=>{
+    document.getElementById('page-'+n).classList.toggle('active',n===p);
+    document.getElementById('tb-'+n).classList.toggle('active',n===p);
+  });
+  if (p==='dash') loadDashboard();
+  if (p==='settings') renderSettings();
+}
+
+function todayStr() {
+  const d=new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function normaliseDate(v) {
+  const s=String(v||''); const m=s.match(/^(\d{4}-\d{2}-\d{2})/); return m?m[1]:s;
+}
+function fmtDisplay(ds) {
+  const [y,m,d]=ds.split('-').map(Number);
+  const dt=new Date(y,m-1,d);
+  const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  return {day:days[dt.getDay()], full:`${d} ${MF[m-1]}`};
+}
+function dayOfYear(d) { return Math.floor((d-new Date(d.getFullYear(),0,0))/86400000); }
+function sheetName() { return (state.users[state.activeUser]||state.users[0]||{name:'Sheet1'}).name; }
+
+// ── API ──
+async function readSheet(user) {
+  if (!state.scriptUrl) return null;
+  const name = user||sheetName();
+  try {
+    const r = await fetch(`${state.scriptUrl}?action=read&user=${encodeURIComponent(name)}`);
+    if (!r.ok) return null;
+    const j = await r.json();
+    if (j.error) return null;
+    const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+    const raw = (j.rows||[]).map(row=>[normaliseDate(row[0]), String(row[1]||'').trim().toLowerCase()]);
+    // Strict filter: only rows with a valid YYYY-MM-DD date AND value of veg or meat
+    // Deduplicate by date, last write wins
+    const map = new Map();
+    raw.forEach(row=>{
+      if (dateRe.test(row[0]) && (row[1]==='veg'||row[1]==='meat')) {
+        map.set(row[0], row[1]);
+      }
+    });
+    return Array.from(map.entries()).map(([d,v])=>[d,v]);
+  } catch(e) { return null; }
+}
+
+async function writeRow(dateStr, value) {
+  if (!state.scriptUrl) return false;
+  isWriting = true;
+  try {
+    // POST avoids the Apps Script 302-redirect double-fire that caused duplicate rows
+    const body = new URLSearchParams({action:'write', user:sheetName(), date:dateStr, value});
+    const r = await fetch(state.scriptUrl, {method:'POST', body});
+    if (!r.ok) { isWriting=false; return false; }
+    const j = await r.json();
+    isWriting = false;
+    return j.success===true;
+  } catch(e) { isWriting=false; return false; }
+}
+
+// ── LOG PAGE ──
+async function renderLogPage() {
+  const td=todayStr(); const {day,full}=fmtDisplay(td);
+  document.getElementById('log-day-name').textContent = day;
+  document.getElementById('log-date-full').textContent = full;
+  document.getElementById('btn-veg').className='log-btn veg';
+  document.getElementById('btn-meat').className='log-btn meat';
+  document.getElementById('check-veg').style.display='none';
+  document.getElementById('check-meat').style.display='none';
+  setSyncStatus('','Loading\u2026');
+  document.getElementById('log-status-text').textContent='Checking today\u2026';
+  const rows=await readSheet();
+  if (rows===null) {
+    setSyncStatus('err','Not connected \u2014 check settings');
+    document.getElementById('log-status-dot').style.background='var(--neutral)';
+    document.getElementById('log-status-text').textContent='Configure sheet in Settings';
+    renderRecent([]); return;
+  }
+  const tr=rows.find(r=>r[0]===td);
+  if (tr) applyLoggedState(tr[1]);
+  else { document.getElementById('log-status-dot').style.background='var(--neutral)'; document.getElementById('log-status-text').textContent='Nothing logged yet today'; }
+  setSyncStatus('ok','Synced with Google Sheets');
+  renderRecent(rows);
+}
+
+function applyLoggedState(val) {
+  // Always reset both first, then apply the selected state
+  document.getElementById('btn-veg').className='log-btn veg';
+  document.getElementById('check-veg').style.display='none';
+  document.getElementById('btn-meat').className='log-btn meat';
+  document.getElementById('check-meat').style.display='none';
+  if (val==='veg') {
+    document.getElementById('btn-veg').className='log-btn selected-veg';
+    document.getElementById('check-veg').style.display='flex';
+    document.getElementById('log-status-dot').style.background='var(--veg)';
+    document.getElementById('log-status-text').textContent='Logged as veg day \u2713';
+  } else {
+    document.getElementById('btn-meat').className='log-btn selected-meat';
+    document.getElementById('check-meat').style.display='flex';
+    document.getElementById('log-status-dot').style.background='var(--meat)';
+    document.getElementById('log-status-text').textContent='Logged as meat day \u2713';
+  }
+}
+
+function setSyncStatus(st,msg) {
+  document.getElementById('sync-dot').className='sync-dot'+(st==='ok'?' ok':st==='err'?' err':'');
+  document.getElementById('sync-text').textContent=msg;
+}
+
+function renderRecent(rows) {
+  const sorted=[...rows].filter(r=>r[0]&&r[1]&&r[1]!=='undefined').sort((a,b)=>b[0].localeCompare(a[0])).slice(0,5);
+  const td=todayStr();
+  const list=document.getElementById('recent-list');
+  if (!sorted.length) { list.innerHTML='<div style="font-size:13px;color:var(--text3);padding:8px 0;">No entries yet</div>'; return; }
+  list.innerHTML=sorted.map(r=>{
+    const isToday=r[0]===td; const {full}=fmtDisplay(r[0]);
+    const col=r[1]==='veg'?'var(--veg)':'var(--meat)';
+    return `<div class="recent-row"><div class="recent-dot" style="background:${col};"></div><div class="recent-date">${isToday?'Today':full}</div><div class="recent-type" style="color:${col};">${r[1]==='veg'?'Veg':'Meat'}</div></div>`;
+  }).join('');
+}
+
+async function logDay(type) {
+  if (isWriting) return;
+  isWriting = true; // lock immediately before any async work
+  const td=todayStr(); setSyncStatus('','Saving\u2026');
+  const ok=await writeRow(td,type);
+  if (ok) {
+    applyLoggedState(type); setSyncStatus('ok','Saved to Google Sheets');
+    showToast(type==='veg'?'Veg day logged!':'Meat day logged!');
+    cancelNotification();
+    const rows=await readSheet(); if(rows) renderRecent(rows);
+  } else { setSyncStatus('err','Save failed \u2014 check connection'); showToast('Save failed'); }
+}
+
+// ── BACK-DATE ──
+function openDayEdit(ds) {
+  editingDate=ds;
+  const td=todayStr(); const {full}=fmtDisplay(ds);
+  document.getElementById('day-edit-title').textContent = ds===td ? 'Log today' : 'Edit \u2014 '+full;
+  document.getElementById('day-edit-modal').classList.add('open');
+}
+function closeDayEditModal(e) {
+  if (!e||e.target===document.getElementById('day-edit-modal'))
+    document.getElementById('day-edit-modal').classList.remove('open');
+}
+async function confirmDayEdit(type) {
+  if (!editingDate||isWriting) return;
+  isWriting = true; // lock immediately
+  const ds=editingDate; editingDate=null;
+  document.getElementById('day-edit-modal').classList.remove('open');
+  setSyncStatus('','Saving\u2026');
+  const ok=await writeRow(ds,type);
+  if (ok) {
+    showToast(type==='veg'?'Veg day saved!':'Meat day saved!');
+    setSyncStatus('ok','Saved'); dashData=null; loadDashboard();
+    const rows=await readSheet();
+    if (rows) { renderRecent(rows); if(ds===todayStr()){const tr=rows.find(r=>r[0]===ds);if(tr)applyLoggedState(tr[1]);} }
+  } else { showToast('Save failed'); setSyncStatus('err','Save failed'); }
+}
+
+// ── DASHBOARD ──
+function blend(f) {
+  const v=[138,184,127],m=[217,145,122],n=[176,174,167];
+  let r,g,b;
+  if (f>=0.5) { const t=(f-.5)*2; r=Math.round(n[0]+t*(v[0]-n[0]));g=Math.round(n[1]+t*(v[1]-n[1]));b=Math.round(n[2]+t*(v[2]-n[2])); }
+  else { const t=f*2; r=Math.round(m[0]+t*(n[0]-m[0]));g=Math.round(m[1]+t*(n[1]-m[1]));b=Math.round(m[2]+t*(n[2]-m[2])); }
+  return `rgb(${r},${g},${b})`;
+}
+async function loadDashboard() {
+  const u=state.users[state.activeUser]; if(!u) return;
+  document.getElementById('dash-user-label').textContent=u.name;
+  document.getElementById('yr-num').textContent=dashYear;
+  document.getElementById('yr-badge').style.display=dashYear===new Date().getFullYear()?'inline':'none';
+  document.getElementById('prev-yr').classList.toggle('off',dashYear<=2020);
+  document.getElementById('next-yr').classList.toggle('off',dashYear>=new Date().getFullYear());
+  const rows=await readSheet(u.name);
+  dashData=rows?rows.filter(r=>r[0]&&r[1]&&r[1]!=='undefined'&&r[0].startsWith(String(dashYear))):[];
+  renderDash();
+}
+function renderDash() {
+  const rows=dashData||[];
+  const vC=rows.filter(r=>r[1]==='veg').length, mC=rows.filter(r=>r[1]==='meat').length, total=vC+mC;
+  const vP=total?Math.round(vC/total*100):0, mP=total?100-vP:0;
+  document.getElementById('pie-center-pct').textContent=total?vP+'%':'\u2013';
+  document.getElementById('pie-veg-val').textContent=vC;
+  document.getElementById('pie-meat-val').textContent=mC;
+  document.getElementById('pie-total-lbl').textContent=total?`${total} days logged`:'No data';
+  renderPie(vP,mP,total);
+  // Build a map of date->value for streak calculation
+  const sorted=[...rows].filter(r=>r[0]&&r[1]).sort((a,b)=>a[0].localeCompare(b[0]));
+  const dateMap={}; sorted.forEach(r=>dateMap[r[0]]=r[1]);
+  // Streak must be sequential calendar days — any gap (unlogged day) breaks it
+  function addDays(ds,n){const d=new Date(ds+'T12:00:00');d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);}
+  let best=0,bs='',be='',cur=0,cs2='';
+  for(let i=0;i<sorted.length;i++){
+    const r=sorted[i];
+    if(r[1]==='veg'){
+      // Check this date is exactly 1 calendar day after the previous veg day
+      if(cur===0){cs2=r[0];cur=1;}
+      else if(addDays(sorted[i-1][0],1)===r[0]&&sorted[i-1][1]==='veg'){cur++;}
+      else{cs2=r[0];cur=1;}
+      if(cur>best){best=cur;bs=cs2;be=r[0];}
+    } else { cur=0; }
+  }
+  // Current streak: walk backwards from today checking each calendar day is logged veg
+  let cs=0;
+  const td2=todayStr();
+  let checkDate=td2;
+  while(true){
+    const val=dateMap[checkDate];
+    if(val==='veg'){cs++;checkDate=addDays(checkDate,-1);}
+    else break;
+  }
+  document.getElementById('stat-grid').innerHTML=`
+    <div class="sc"><div class="sv" style="color:var(--veg);">${vP}%</div><div class="sl">Veg days</div></div>
+    <div class="sc"><div class="sv" style="color:var(--meat);">${mP}%</div><div class="sl">Meat days</div></div>
+    <div class="sc"><div class="sv" style="color:var(--veg);">${cs||'\u2013'}</div><div class="sl">Current streak</div></div>
+    <div class="sc"><div class="sv">${total}</div><div class="sl">Days logged</div></div>`;
+  renderCalView(rows);
+  const fmt=s=>{if(!s)return'';const[,m,d]=s.split('-');return `${parseInt(d)} ${MN[parseInt(m)-1]}`;};
+  document.getElementById('streak-card').innerHTML=`
+    <div class="streak-icon">&#x1F3C6;</div>
+    <div><div style="font-size:13px;font-weight:500;">Best streak: <span class="streak-val">${best} veg days</span></div>
+    <div class="streak-sub">${best?fmt(bs)+' \u2013 '+fmt(be):'No streak yet'}</div></div>`;
+}
+function renderPie(vP,mP,total) {
+  const cv=document.getElementById('pie-canvas'); cv.width=100;cv.height=100;
+  if(pieChartInst){pieChartInst.destroy();pieChartInst=null;}
+  if(!total) return;
+  pieChartInst=new Chart(cv.getContext('2d'),{type:'doughnut',
+    data:{datasets:[{data:[vP,mP],backgroundColor:['#8ab87f','#d9917a'],borderWidth:0}]},
+    options:{responsive:false,cutout:'62%',plugins:{legend:{display:false},tooltip:{enabled:false}},animation:{duration:400}}});
+}
+function setView(v,el){dashView=v;document.querySelectorAll('.vt').forEach(e=>e.classList.remove('active'));el.classList.add('active');renderCalView(dashData||[]);}
+function changeYear(d){dashYear+=d;loadDashboard();}
+function renderCalView(rows){
+  const lbl={day:'Day by day',week:'Week by week',month:'Month by month'};
+  document.getElementById('cal-lbl').textContent=lbl[dashView];
+  if(dashView==='day')renderDayView(rows);else if(dashView==='week')renderWeekView(rows);else renderMonthView(rows);
+}
+function renderDayView(rows) {
+  const map={}; rows.forEach(r=>{if(r[0]&&r[1])map[r[0]]=r[1];});
+  const leap=y=>(y%4===0&&y%100!==0)||y%400===0;
+  const total=dashYear===new Date().getFullYear()?dayOfYear(new Date()):(leap(dashYear)?366:365);
+  const startDow=new Date(dashYear,0,1).getDay(), td=todayStr();
+  let html='<div class="cal-grid" style="grid-template-columns:repeat(7,1fr);">';
+  for(let i=0;i<startDow;i++) html+='<div class="cal-cell" style="background:transparent;"></div>';
+  for(let i=0;i<total;i++){
+    const d=new Date(dashYear,0,1);d.setDate(d.getDate()+i);
+    const ds=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const v=map[ds]; const col=v?(v==='veg'?blend(1):blend(0)):'var(--surface2)';
+    const ring=ds===td?'outline:2px solid var(--text);outline-offset:-2px;':'';
+    html+=`<div class="cal-cell" style="background:${col};${ring}cursor:pointer;" onclick="openDayEdit('${ds}')"></div>`;
+  }
+  html+='</div>'; document.getElementById('cal-container').innerHTML=html;
+}
+function renderWeekView(rows) {
+  const map={}; rows.forEach(r=>{if(r[0]&&r[1])map[r[0]]=r[1];});
+  const leap=y=>(y%4===0&&y%100!==0)||y%400===0;
+  const total=dashYear===new Date().getFullYear()?dayOfYear(new Date()):(leap(dashYear)?366:365);
+  const weeks=[];
+  for(let i=0;i<total;i+=7){let v=0,t=0;
+    for(let j=i;j<Math.min(i+7,total);j++){const d=new Date(dashYear,0,1);d.setDate(d.getDate()+j);
+      const ds=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      if(map[ds]){t++;if(map[ds]==='veg')v++;}}
+    weeks.push(t?v/t:null);}
+  let html='<div class="cal-grid" style="grid-template-columns:repeat(8,1fr);">';
+  weeks.forEach(f=>{const col=f===null?'var(--surface2)':blend(f);html+=`<div class="cal-cell" style="background:${col};border-radius:4px;"></div>`;});
+  html+='</div>'; document.getElementById('cal-container').innerHTML=html;
+}
+function renderMonthView(rows) {
+  const map={}; rows.forEach(r=>{if(r[0]&&r[1])map[r[0]]=r[1];});
+  const maxM=dashYear===new Date().getFullYear()?new Date().getMonth():11;
+  let html='<div class="month-grid">';
+  for(let m=0;m<=maxM;m++){let v=0,t=0;const dm=new Date(dashYear,m+1,0).getDate();
+    for(let d=1;d<=dm;d++){const ds=`${dashYear}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      if(map[ds]){t++;if(map[ds]==='veg')v++;}}
+    const f=t?v/t:.5; const col=t?blend(f):'var(--surface2)'; const pct=t?Math.round(f*100):null;
+    html+=`<div class="month-cell" style="background:${col};"><span class="month-name">${MN[m]}</span>${pct!==null?`<span class="month-pct">${pct}%</span>`:'<span class="month-pct" style="opacity:.4;">\u2013</span>'}</div>`;}
+  html+='</div>'; document.getElementById('cal-container').innerHTML=html;
+}
+
+// ── NOTIFICATIONS ──
+function saveNotifTime(t){state.notifTime=t;saveState();scheduleNotification();showToast('Reminder set for '+t);}
+async function requestNotifPermission(){
+  if(!('Notification' in window)){showToast('Notifications not supported');return;}
+  const p=await Notification.requestPermission();
+  state.notifEnabled=p==='granted';saveState();updateNotifStatus();
+  if(p==='granted'){showToast('Notifications enabled!');scheduleNotification();}
+  else showToast('Permission denied');
+}
+function updateNotifStatus(){
+  const el=document.getElementById('notif-status');if(!el)return;
+  if(!('Notification' in window)){el.textContent='Not supported';return;}
+  if(Notification.permission==='granted')el.textContent='Enabled \u2713';
+  else if(Notification.permission==='denied')el.textContent='Blocked \u2014 check device settings';
+  else el.textContent='Tap to enable';
+}
+function cancelNotification(){if(notifTimer){clearTimeout(notifTimer);notifTimer=null;}}
+function scheduleNotification(){
+  cancelNotification();
+  if(!state.notifEnabled||Notification.permission!=='granted'||!state.notifTime)return;
+  const [hh,mm]=state.notifTime.split(':').map(Number);
+  const now=new Date(), target=new Date(now);
+  target.setHours(hh,mm,0,0);
+  if(target<=now)return;
+  notifTimer=setTimeout(async()=>{
+    const rows=await readSheet(); const td=todayStr();
+    const logged=rows&&rows.find(r=>r[0]===td);
+    if(!logged) new Notification('Veg Tracker',{
+      body:"Don't forget to log today! Veg or meat?",
+      tag:'veg-tracker-daily',
+    });
+  },target-now);
+}
+
+// ── SETTINGS ──
+function renderSettings(){renderSettingsInputs();renderActiveUserCard();renderUsersListCard();updateNotifStatus();const ti=document.getElementById('notif-time-input');if(ti)ti.value=state.notifTime||'20:00';}
+function renderSettingsInputs(){
+  document.getElementById('script-url-input').value=state.scriptUrl||'';
+  document.getElementById('sheet-url-preview').textContent=state.scriptUrl?state.scriptUrl.slice(0,46)+'\u2026':'Not configured';
+}
+function renderActiveUserCard(){
+  if(!state.users.length)return;
+  const u=state.users[state.activeUser]||state.users[0], c=COLORS[u.color%COLORS.length];
+  document.getElementById('active-user-card').innerHTML=`<div class="settings-row" onclick="openUserModal()"><div class="user-row-avatar" style="background:${c.bg};color:${c.text};">${u.name.slice(0,2).toUpperCase()}</div><div class="settings-row-text"><div class="settings-row-title">${u.name}</div><div class="settings-row-sub">Tap to switch active user</div></div><div class="settings-chevron">&#x203A;</div></div>`;
+}
+function renderUsersListCard(){
+  document.getElementById('users-list-card').innerHTML=state.users.map((u,i)=>{
+    const c=COLORS[u.color%COLORS.length];
+    return `<div class="settings-row" style="cursor:default;"><div class="user-row-avatar" style="background:${c.bg};color:${c.text};">${u.name.slice(0,2).toUpperCase()}</div><div class="settings-row-text"><div class="settings-row-title">${u.name}</div><div class="settings-row-sub">Sheet tab: ${u.name}</div></div>${i===state.activeUser?'<span class="pill pill-green">active</span>':''}${state.users.length>1&&i!==state.activeUser?`<button class="remove-btn" onclick="removeUser(${i})">&times;</button>`:''}</div>`;
+  }).join('');
+}
+function addUser(){
+  const input=document.getElementById('new-user-input'), name=input.value.trim();
+  if(!name)return;
+  if(state.users.find(u=>u.name.toLowerCase()===name.toLowerCase())){showToast('User already exists');return;}
+  state.users.push({name,color:state.users.length%COLORS.length});
+  input.value=''; saveState(); renderUsersListCard(); showToast('Added '+name);
+}
+function removeUser(i){
+  if(state.users.length<=1){showToast("Can't remove last user");return;}
+  const name=state.users[i].name; state.users.splice(i,1);
+  if(state.activeUser>=state.users.length)state.activeUser=state.users.length-1;
+  saveState(); renderTopbar(); renderActiveUserCard(); renderUsersListCard(); showToast('Removed '+name);
+}
+function saveScriptConfig(){
+  const url=document.getElementById('script-url-input').value.trim();
+  if(!url){showToast('Paste your Apps Script URL');return;}
+  state.scriptUrl=url; saveState(); renderSettingsInputs(); testConnection();
+}
+async function testConnection(){
+  const hint=document.getElementById('sheet-hint');
+  hint.textContent='Testing\u2026'; hint.style.color='var(--text3)';
+  const rows=await readSheet();
+  if(rows!==null){hint.textContent='\u2713 Connected \u2014 '+rows.length+' rows in "'+sheetName()+'" tab';hint.style.color='var(--veg)';showToast('Connected!');}
+  else{hint.textContent='\u2717 Failed. Check URL and re-deploy Apps Script.';hint.style.color='var(--meat)';showToast('Connection failed');}
+}
+function openSheet(){showToast('Open your Google Sheet directly from Google Drive');}
+function openUserModal(){
+  document.getElementById('modal-user-list').innerHTML=state.users.map((u,i)=>{
+    const c=COLORS[u.color%COLORS.length];
+    return `<div class="modal-user-item" onclick="switchUser(${i})"><div class="user-row-avatar" style="background:${c.bg};color:${c.text};width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;">${u.name.slice(0,2).toUpperCase()}</div><div class="modal-user-name">${u.name}</div>${i===state.activeUser?'<div class="modal-check">\u2713</div>':''}</div>`;
+  }).join('');
+  document.getElementById('user-modal').classList.add('open');
+}
+function closeUserModal(e){if(e.target===document.getElementById('user-modal'))document.getElementById('user-modal').classList.remove('open');}
+function switchUser(i){
+  state.activeUser=i; saveState();
+  document.getElementById('user-modal').classList.remove('open');
+  renderTopbar(); renderLogPage(); dashData=null;
+  if(document.getElementById('page-dash').classList.contains('active'))loadDashboard();
+  if(document.getElementById('page-settings').classList.contains('active'))renderSettings();
+  showToast('Switched to '+state.users[i].name);
+  checkBirthday();
+}
+function showSetupGuide(){document.getElementById('guide-modal').classList.add('open');}
+function closeGuideModal(e){if(e.target===document.getElementById('guide-modal'))document.getElementById('guide-modal').classList.remove('open');}
+// ── BIRTHDAY SURPRISE ──
+function checkBirthday() {
+  const u = state.users[state.activeUser];
+  if (!u || u.name.toLowerCase() !== 'maria') return;
+  const now = new Date();
+  if (now.getMonth() === 1 && now.getDate() === 24) { // Feb = month 1
+    setTimeout(() => {
+      document.getElementById('birthday-overlay').classList.add('open');
+      runConfetti();
+    }, 800);
+  }
+}
+function closeBirthday() {
+  document.getElementById('birthday-overlay').classList.remove('open');
+  stopConfetti();
+}
+let confettiAnim = null;
+function runConfetti() {
+  const canvas = document.getElementById('confetti-canvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  const pieces = Array.from({length: 120}, () => ({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height - canvas.height,
+    r: Math.random() * 7 + 4,
+    d: Math.random() * 80 + 20,
+    color: ['#8ab87f','#d9917a','#f7c5a0','#a8d4f5','#f5c0d0','#fde68a','#c4b5fd'][Math.floor(Math.random()*7)],
+    tilt: Math.random() * 10 - 10,
+    tiltAngle: Math.random() * Math.PI * 2,
+    tiltSpeed: Math.random() * 0.1 + 0.05,
+    speed: Math.random() * 2 + 1,
+  }));
+  let frame = 0;
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    pieces.forEach(p => {
+      ctx.beginPath();
+      ctx.lineWidth = p.r / 2;
+      ctx.strokeStyle = p.color;
+      ctx.moveTo(p.x + p.tilt + p.r / 4, p.y);
+      ctx.lineTo(p.x + p.tilt, p.y + p.tilt + p.r / 4);
+      ctx.stroke();
+      p.tiltAngle += p.tiltSpeed;
+      p.y += p.speed;
+      p.tilt = Math.sin(p.tiltAngle) * 15;
+      if (p.y > canvas.height) {
+        p.x = Math.random() * canvas.width;
+        p.y = -20;
+      }
+    });
+    if (frame < 600) { frame++; confettiAnim = requestAnimationFrame(draw); }
+    else stopConfetti();
+  }
+  confettiAnim = requestAnimationFrame(draw);
+}
+function stopConfetti() {
+  if (confettiAnim) { cancelAnimationFrame(confettiAnim); confettiAnim = null; }
+  const canvas = document.getElementById('confetti-canvas');
+  canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+}
+
+let toastTimer;
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),2200);}
+</script>
+</body>
+</html>
